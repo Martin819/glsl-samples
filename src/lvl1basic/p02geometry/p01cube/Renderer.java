@@ -10,7 +10,6 @@ import oglutils.OGLUtils;
 import oglutils.ShaderUtils;
 import oglutils.ToFloatArray;
 
-import utils.MeshGenerator;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseEvent;
@@ -21,6 +20,7 @@ import transforms.Camera;
 import transforms.Mat4;
 import transforms.Mat4PerspRH;
 import transforms.Vec3D;
+import utils.MeshGenerator;
 
 /**
  * GLSL sample:<br/>
@@ -35,12 +35,13 @@ import transforms.Vec3D;
 public class Renderer implements GLEventListener, MouseListener,
 		MouseMotionListener, KeyListener {
 
-	int width, height, ox, oy;
+	int width, height, ox, oy, polygonMode = GL2GL3.GL_FILL;
 
 	OGLBuffers cube, grid;
 	OGLTextRenderer textRenderer;
 
-	int shaderCube, locMatCube, locLightCube, locEyeCube, shaderGrid, locMatGrid, locLightGrid, locEyeGrid;
+	int shaderCube, locMatCube, locLightCube, locEyeCube;
+	int shaderGrid, locMatGrid, locLightGrid, locEyeGrid;
 
 	Vec3D lightPos = new Vec3D(4,2,5);
 
@@ -65,18 +66,21 @@ public class Renderer implements GLEventListener, MouseListener,
 		// shaders directory must be set as a source directory of the project
 		// e.g. in Eclipse via main menu Project/Properties/Java Build Path/Source
 		shaderCube = ShaderUtils.loadProgram(gl, "/lvl1basic/p02geometry/p01cube/simple");
-/*		shaderGrid = ShaderUtils.loadProgram(gl, "/grid.vert", "/lvl1basic/p02geometry/p01cube/grid.frag",
-                null, null, null, null);
-		// ^^ Recyklujeme grid.frag*/
-        shaderCube = ShaderUtils.loadProgram(gl, "/grid");
+		shaderGrid = ShaderUtils.loadProgram(
+				gl, "/grid.vert",
+				"/lvl1basic/p02geometry/p01cube/simple.frag",
+				null, null, null, null);
+		shaderGrid = ShaderUtils.loadProgram(gl, "/grid");
 		createBuffers(gl);
+		grid = MeshGenerator.generateGrid(gl, 10, 10, "inParamPos");
 
-		locLightCube = gl.glGetUniformLocation(shaderCube, "LightPosCube");
-		locMatCube = gl.glGetUniformLocation(shaderCube, "MatCube");
-		locEyeCube = gl.glGetUniformLocation(shaderCube, "EyePosCube");
-		locLightGrid = gl.glGetUniformLocation(shaderGrid, "LightPosGrid");
-		locMatGrid = gl.glGetUniformLocation(shaderGrid, "MatGrid");
-		locEyeGrid = gl.glGetUniformLocation(shaderGrid, "EyePosGrid");
+		locMatCube = gl.glGetUniformLocation(shaderCube, "mat");
+		locLightCube = gl.glGetUniformLocation(shaderCube, "lightPos");
+		locEyeCube = gl.glGetUniformLocation(shaderCube, "eyePos");
+
+		locMatGrid = gl.glGetUniformLocation(shaderGrid, "mat");
+		locLightGrid = gl.glGetUniformLocation(shaderGrid, "lightPos");
+		locEyeGrid = gl.glGetUniformLocation(shaderGrid, "eyePos");
 
 		cam = cam.withPosition(new Vec3D(5, 5, 2.5))
 				.withAzimuth(Math.PI * 1.25)
@@ -89,7 +93,7 @@ public class Renderer implements GLEventListener, MouseListener,
 		// vertices are not shared among triangles (and thus faces) so each face
 		// can have a correct normal in all vertices
 		// also because of this, the vertices can be directly drawn as GL_TRIANGLES
-		// (three and three vertices form one face) 
+		// (three and three vertices form one face)
 		// triangles defined in index buffer
 		float[] cube = {
 				// bottom (z-) face
@@ -139,31 +143,35 @@ public class Renderer implements GLEventListener, MouseListener,
 		};
 
 		this.cube = new OGLBuffers(gl, cube, attributes, indexBufferData);
-		this.grid = MeshGenerator.generateGrid(gl, 10, 10, "inParamPos");
+		this.grid = MeshGenerator.generateGrid(gl, 100, 100, "inParamPos");
 	}
 
 	
 	@Override
 	public void display(GLAutoDrawable glDrawable) {
 		GL2GL3 gl = glDrawable.getGL().getGL2GL3();
-		
+
+		gl.glPolygonMode(GL2GL3.GL_FRONT_AND_BACK, polygonMode);
+
 		gl.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		gl.glClear(GL2GL3.GL_COLOR_BUFFER_BIT | GL2GL3.GL_DEPTH_BUFFER_BIT);
 		
-		gl.glUseProgram(shaderCube);
+		gl.glUseProgram(shaderCube); 
 		gl.glUniformMatrix4fv(locMatCube, 1, false,
 				ToFloatArray.convert(cam.getViewMatrix().mul(proj)), 0);
 		gl.glUniform3fv(locLightCube, 1, ToFloatArray.convert(lightPos), 0);
-        gl.glUniform3fv(locEyeCube, 1, ToFloatArray.convert(cam.getEye()), 0);
+		gl.glUniform3fv(locEyeCube, 1, ToFloatArray.convert(cam.getEye()), 0);
+
 		cube.draw(GL2GL3.GL_TRIANGLES, shaderCube);
 
-        gl.glUseProgram(shaderGrid);
-        gl.glUniformMatrix4fv(locMatGrid, 1, false,
-                ToFloatArray.convert(cam.getViewMatrix().mul(proj)), 0);
-        gl.glUniform3fv(locLightGrid, 1, ToFloatArray.convert(lightPos), 0);
-        gl.glUniform3fv(locEyeGrid, 1, ToFloatArray.convert(cam.getEye()), 0);
-        grid.draw(GL2GL3.GL_TRIANGLES, shaderGrid);
-		
+		gl.glUseProgram(shaderGrid);
+		gl.glUniformMatrix4fv(locMatGrid, 1, false,
+				ToFloatArray.convert(cam.getViewMatrix().mul(proj)), 0);
+		gl.glUniform3fv(locLightGrid, 1, ToFloatArray.convert(lightPos), 0);
+		gl.glUniform3fv(locEyeGrid, 1, ToFloatArray.convert(cam.getEye()), 0);
+
+		grid.draw(GL2GL3.GL_TRIANGLES, shaderGrid);
+
 		String text = new String(this.getClass().getName() + ": [LMB] camera, WSAD");
 		
 		textRenderer.drawStr2D(3, height-20, text);
@@ -242,6 +250,12 @@ public class Renderer implements GLEventListener, MouseListener,
 			break;
 		case KeyEvent.VK_F:
 			cam = cam.mulRadius(1.1f);
+			break;
+		case KeyEvent.VK_L:
+			polygonMode = GL2GL3.GL_LINE;
+			break;
+		case KeyEvent.VK_P:
+			polygonMode = GL2GL3.GL_FILL;
 			break;
 		}
 	}

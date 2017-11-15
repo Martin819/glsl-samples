@@ -19,11 +19,12 @@ public class JOGLApp {
 	public void start() {
 		try {
 			Frame testFrame = new Frame("TestFrame");
-			testFrame.setSize(512, 384);
+			testFrame.setSize(1024, 768);
 
 			// setup OpenGL version
 	    	GLProfile profile = GLProfile.getMaximum(true);
 	    	GLCapabilities capabilities = new GLCapabilities(profile);
+	    	capabilities.setDepthBits(24);
 	    	
 	    	// The canvas is the widget that's drawn in the JFrame
 	    	GLCanvas canvas = new GLCanvas(capabilities);
@@ -32,7 +33,7 @@ public class JOGLApp {
 			canvas.addMouseListener(ren);
 			canvas.addMouseMotionListener(ren);
 			canvas.addKeyListener(ren);
-	    	canvas.setSize( 512, 384 );
+	    	canvas.setSize( testFrame.getWidth(), testFrame.getHeight() );
 	    	
 	    	
 	    	testFrame.add(canvas);
